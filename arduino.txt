@@ -1,0 +1,39 @@
+const int PIN_TEMP = A0;
+const int PIN_LIGHT = A1;
+const int PIN_POT = A2;
+
+const int PIN_SW1 = 2;
+const int PIN_SW2 = 3;
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+
+  pinMode(PIN_SW1, INPUT_PULLUP);
+  pinMode(PIN_SW2, INPUT_PULLUP);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  int tempADC = analogRead(PIN_TEMP);
+  int lightADC = analogRead(PIN_LIGHT);
+  int potADC = analogRead(PIN_POT);
+
+  float voltage = potADC * (5.0 / 1023.0);
+
+  Serial.print("a) Temp: ");
+  Serial.print(tempADC);
+  Serial.print(" ADC ");
+
+  Serial.print("b) Swiatlo: ");
+  Serial.print(lightADC);
+  Serial.print(" ADC ");
+
+  Serial.print("c) Potencjometr: ");
+  Serial.print(voltage);
+  Serial.print(" V");
+
+  Serial.println("---------------------");
+
+  delay(1000);
+}
