@@ -1,39 +1,93 @@
-const int PIN_TEMP = A0;
-const int PIN_LIGHT = A1;
-const int PIN_POT = A2;
+#include <SoftwareSerial.h>
+#include "Vrekrer_scpi_parser.h"
 
-const int PIN_SW1 = 2;
-const int PIN_SW2 = 3;
+const int PIN_TEMP = A0;   
+const int PIN_LIGHT = A1;  
+const int PIN_POT = A2;    
+
+const int PIN_SW1 = 3;     
+const int PIN_SW2 = 4;     
+
+const int LCD_RX = 8;      
+const int LCD_TX = 2;      
+
+SoftwareSerial lcdSerial(LCD_RX, LCD_TX);
+
+SCPI_Parser my_instrument;
+
+// 1. Rozkaz: *IDN?
+void scpi_identify(SCPI_C commands, SCPI_P parameters, Stream& interface) {
+  interface.println("Arduino Uno,AVT5636_Controller,v1.0");
+}
+
+// 2. Rozkaz: MEASure:TEMPerature?
+void scpi_measure_temp(SCPI_C commands, SCPI_P parameters, Stream& interface) {
+  int tempADC = analogRead(PIN_TEMP);
+  interface.println(tempADC); 
+}
+
+// 3. Rozkaz: MEASure:LIGHt?
+void scpi_measure_light(SCPI_C commands, SCPI_P parameters, Stream& interface) {
+  int lightADC = analogRead(PIN_LIGHT);
+  interface.println(lightADC); 
+}
+
+// 4. Rozkaz: MEASure:VOLTage?
+void scpi_measure_volt(SCPI_C commands, SCPI_P parameters, Stream& interface) {
+  int potADC = analogRead(PIN_POT);
+  float voltage = potADC * (5.0 / 1023.0);
+  interface.println(voltage, 2); 
+}
+
+// 5. Rozkaz: MEASure:SWITches?
+void scpi_measure_switches(SCPI_C commands, SCPI_P parameters, Stream& interface) {
+  int sw1 = digitalRead(PIN_SW1);
+  int sw2 = digitalRead(PIN_SW2);
+  interface.print(sw1);
+  interface.print(",");
+  interface.println(sw2);
+}
+
+// 6. Rozkaz: CONFigure:LCD "tekst"
+void scpi_config_lcd(SCPI_C commands, SCPI_P parameters, Stream& interface) {
+  if (parameters.Size() > 0) {
+    String msg = String(parameters[0]);
+    msg.replace("\"", ""); 
+    
+    lcdSerial.print("@LCD!\r");
+    delay(30);
+    lcdSerial.print("@LCD=" + msg + "\r");
+    delay(30);
+    
+    interface.println("OK"); 
+  } else {
+    interface.println("ERR: Brak tekstu");
+  }
+}
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(9600);
+  
+  lcdSerial.begin(19200);
 
   pinMode(PIN_SW1, INPUT_PULLUP);
   pinMode(PIN_SW2, INPUT_PULLUP);
+
+  my_instrument.RegisterCommand(F("*IDN?"), &scpi_identify);
+  
+  my_instrument.SetCommandTreeBase(F("MEASure"));
+    my_instrument.RegisterCommand(F(":TEMPerature?"), &scpi_measure_temp);
+    my_instrument.RegisterCommand(F(":LIGHt?"), &scpi_measure_light);
+    my_instrument.RegisterCommand(F(":VOLTage?"), &scpi_measure_volt);
+    my_instrument.RegisterCommand(F(":SWITches?"), &scpi_measure_switches);
+    
+  my_instrument.SetCommandTreeBase(F("CONFigure"));
+    my_instrument.RegisterCommand(F(":LCD"), &scpi_config_lcd);
+
+  delay(1000);
+  lcdSerial.print("@LCD!\r");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  int tempADC = analogRead(PIN_TEMP);
-  int lightADC = analogRead(PIN_LIGHT);
-  int potADC = analogRead(PIN_POT);
-
-  float voltage = potADC * (5.0 / 1023.0);
-
-  Serial.print("a) Temp: ");
-  Serial.print(tempADC);
-  Serial.print(" ADC ");
-
-  Serial.print("b) Swiatlo: ");
-  Serial.print(lightADC);
-  Serial.print(" ADC ");
-
-  Serial.print("c) Potencjometr: ");
-  Serial.print(voltage);
-  Serial.print(" V");
-
-  Serial.println("---------------------");
-
-  delay(1000);
+  my_instrument.ProcessInput(Serial, "\n");
 }
