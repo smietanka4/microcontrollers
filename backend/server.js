@@ -40,6 +40,13 @@ const sendScpiCommand = (command) => {
     activeCommandResolve = resolve;
     console.log(`[PC -> Arduino]: ${command}`);
     arduinoPort.write(`${command}\n`);
+
+    setTimeout(() => {
+      if (activeCommandResolve === resolve) {
+        activeCommandResolve = null;
+        reject(new Error("Timeout: Arduino nie odpowiedziało w wymaganym czasie"))
+      }
+    }, 1500)
   });
 };
 
@@ -98,7 +105,7 @@ app.get("/api/measure/switches", async (req, res) => {
 });
 
 // 6. Konfiguracja wyświetlacza LCD (CONF)
-app.post("api/config/lcd", async (req, res) => {
+app.post("/api/config/lcd", async (req, res) => {
   try {
     const { message } = req.body;
     if (!message) {
